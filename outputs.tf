@@ -3,6 +3,12 @@
 #
 # Outputs are wrapped in `try()` so they still evaluate to an empty value when
 # `create_service_account = false` leaves no resource to reference.
+#
+# Attributes that are optional in the provider schema are additionally
+# null-guarded: the provider returns null — not an empty value — when nothing is
+# assigned, and `try()` only catches errors, so it passes a null straight
+# through. Without this a consumer gets null from `namespace_accesses` on an
+# account-scoped service account, and `length()` on it fails.
 ################################################################################
 
 output "service_account_id" {
@@ -22,17 +28,19 @@ output "service_account_state" {
 
 output "service_account_account_access" {
   description = "The account-level role held by the service account. Empty for a namespace-scoped service account"
-  value       = try(temporalcloud_service_account.this[0].account_access, "")
+  value       = try(coalesce(temporalcloud_service_account.this[0].account_access, ""), "")
 }
 
 output "service_account_namespace_accesses" {
-  description = "The set of per-namespace permissions granted to the service account"
-  value       = try(temporalcloud_service_account.this[0].namespace_accesses, [])
+  description = "The set of per-namespace permissions granted to the service account. Empty when none are granted"
+  value       = try(coalesce(temporalcloud_service_account.this[0].namespace_accesses, toset([])), toset([]))
 }
 
 output "service_account_namespace_scoped_access" {
   description = "The single namespace the service account is confined to, and its permission there. Empty unless `namespace_scoped_access` was set"
-  value       = try(temporalcloud_service_account.this[0].namespace_scoped_access, {})
+  # A conditional rather than coalesce(): coalesce requires its arguments to
+  # share a type, and this attribute is an object rather than a collection.
+  value = try(temporalcloud_service_account.this[0].namespace_scoped_access == null ? {} : temporalcloud_service_account.this[0].namespace_scoped_access, {})
 }
 
 ################################################################################

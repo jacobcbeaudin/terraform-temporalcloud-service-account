@@ -217,7 +217,7 @@ No modules.
 | <a name="output_service_account_account_access"></a> [service\_account\_account\_access](#output\_service\_account\_account\_access) | The account-level role held by the service account. Empty for a namespace-scoped service account |
 | <a name="output_service_account_id"></a> [service\_account\_id](#output\_service\_account\_id) | The unique identifier of the service account. This is the value to pass as `owner_id` when issuing API keys for it elsewhere |
 | <a name="output_service_account_name"></a> [service\_account\_name](#output\_service\_account\_name) | The name of the service account |
-| <a name="output_service_account_namespace_accesses"></a> [service\_account\_namespace\_accesses](#output\_service\_account\_namespace\_accesses) | The set of per-namespace permissions granted to the service account |
+| <a name="output_service_account_namespace_accesses"></a> [service\_account\_namespace\_accesses](#output\_service\_account\_namespace\_accesses) | The set of per-namespace permissions granted to the service account. Empty when none are granted |
 | <a name="output_service_account_namespace_scoped_access"></a> [service\_account\_namespace\_scoped\_access](#output\_service\_account\_namespace\_scoped\_access) | The single namespace the service account is confined to, and its permission there. Empty unless `namespace_scoped_access` was set |
 | <a name="output_service_account_state"></a> [service\_account\_state](#output\_service\_account\_state) | The current state of the service account as reported by Temporal Cloud |
 <!-- END_TF_DOCS -->
