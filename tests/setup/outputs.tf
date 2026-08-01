@@ -1,8 +1,8 @@
 output "service_account_name" {
-  description = "Unique service account name for this test run, prefixed `yulei-tftest-` so leftovers from an interrupted run are identifiable in the Temporal Cloud account"
+  description = "Unique service account name for this test run, prefixed `yulei-tftest-sa-` so leftovers from an interrupted run are identifiable in the Temporal Cloud account"
   # `yulei-` identifies the owner, `tftest-` distinguishes test resources from
   # anything created by hand. scripts/check-orphans.sh matches on this prefix.
-  value = "yulei-tftest-${random_pet.this.id}"
+  value = "yulei-tftest-sa-${random_pet.this.id}"
 }
 
 output "namespace_id" {

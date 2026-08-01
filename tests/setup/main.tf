@@ -30,7 +30,7 @@ locals {
 resource "temporalcloud_namespace" "this" {
   count = var.create_namespace ? 1 : 0
 
-  name           = "yulei-tftest-${random_pet.this.id}"
+  name           = "yulei-tftest-sa-${random_pet.this.id}"
   regions        = [local.region_ids[0]]
   retention_days = 1
   api_key_auth   = true
