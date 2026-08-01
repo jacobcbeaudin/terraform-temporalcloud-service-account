@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/compare/v1.0.4...v2.0.0) (2026-08-01)
+
+### ⚠ BREAKING CHANGES
+
+* name no longer has a default. A module call that sets
+create_service_account = false must now pass it explicitly, for example
+name = "".
+
+### Features
+
+* Require the inputs the provider requires ([bad9f5f](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/commit/bad9f5f6a1b8be829ddb2f1a9cdd3b5c000abbc9))
+
 ## [1.0.4](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/compare/v1.0.3...v1.0.4) (2026-08-01)
 
 ### Documentation
