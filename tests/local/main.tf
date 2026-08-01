@@ -78,6 +78,10 @@ module "disabled" {
   source = "../../"
 
   create_service_account = false
+
+  # name has no default, so Terraform requires it even when nothing is created.
+  # This empty value is never read.
+  name = ""
 }
 
 # Minimum viable call: a name and an account role.

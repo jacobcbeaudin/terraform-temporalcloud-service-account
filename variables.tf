@@ -9,9 +9,8 @@ variable "create_service_account" {
 ################################################################################
 
 variable "name" {
-  description = "The name of the service account. Required when `create_service_account` is `true`; the empty default is sent as an empty name and nothing rejects it before apply"
+  description = "The name of the service account. Pass `\"\"` when `create_service_account` is `false`"
   type        = string
-  default     = ""
 }
 
 variable "description" {

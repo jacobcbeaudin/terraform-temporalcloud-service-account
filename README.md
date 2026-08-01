@@ -160,10 +160,11 @@ module "service_accounts" {
 
 ## Which inputs are required
 
-Every input carries a Terraform default, so the generated **Inputs** table below reports
-`Required: no` for all of them. That is what makes `create_service_account = false` possible: a module
-that can be switched off cannot also demand a value for each input. What is genuinely required depends
-on which gates are on, and these tables are the record of it.
+The generated **Inputs** table below marks `name` as required, and Terraform enforces that —
+including when `create_service_account = false`, where the module creates nothing but still needs a
+value. Pass `name = ""` to switch the module off.
+
+Everything else depends on which gates are on, and the tables below are the record of it.
 
 Where a rule is caught differs, and the tables say so:
 
@@ -178,14 +179,13 @@ Where a rule is caught differs, and the tables say so:
 
 | Input | Omitting it |
 | --- | --- |
-| `name` | The service account is sent with an empty name. Nothing before **apply** objects. |
 | `account_access` **or** `namespace_scoped_access` | Exactly one is required. Setting neither fails at **apply** with `Either account_access or namespace_scoped_access must be provided`. |
 
 `account_access_custom_roles` adds to `account_access` rather than standing in for it: custom roles on
 their own plan cleanly and then hit that same apply-time error.
 
-With `create_service_account = false` nothing is required — every resource is switched off and the
-outputs are empty.
+With `create_service_account = false` nothing beyond `name` is needed — every resource is switched off
+and the outputs are empty.
 
 ### With `create_apikey = true`
 
@@ -254,7 +254,7 @@ No modules.
 | <a name="input_create_apikey"></a> [create\_apikey](#input\_create\_apikey) | Controls if an API key should be issued for the service account. Setting it to `true` makes `apikey_display_name` and `apikey_expiry_time` required. Has no effect when `create_service_account` is `false`, since the key needs an owner | `bool` | `false` | no |
 | <a name="input_create_service_account"></a> [create\_service\_account](#input\_create\_service\_account) | Controls if the service account should be created. Set to `false` to disable the module without removing the call | `bool` | `true` | no |
 | <a name="input_description"></a> [description](#input\_description) | Description of the service account, shown alongside it in the Temporal Cloud UI. Optional; the service account is created without one when unset | `string` | `null` | no |
-| <a name="input_name"></a> [name](#input\_name) | The name of the service account. Required when `create_service_account` is `true`; the empty default is sent as an empty name and nothing rejects it before apply | `string` | `""` | no |
+| <a name="input_name"></a> [name](#input\_name) | The name of the service account. Pass `""` when `create_service_account` is `false` | `string` | n/a | yes |
 | <a name="input_namespace_accesses"></a> [namespace\_accesses](#input\_namespace\_accesses) | Per-namespace permissions, as a set of `namespace_id` and `permission` pairs. `permission` is `admin`, `write` or `read`, matched case-insensitively. Optional; the service account reaches namespaces only through its `account_access` role when unset. A service account whose `account_access` is `owner` or `admin` already reaches every namespace and cannot be given explicit entries here. Omit rather than passing an empty set. Cannot be combined with `namespace_scoped_access` | <pre>set(object({<br/>    namespace_id = string<br/>    permission   = string<br/>  }))</pre> | `null` | no |
 | <a name="input_namespace_scoped_access"></a> [namespace\_scoped\_access](#input\_namespace\_scoped\_access) | Confines the service account to exactly one namespace, with no account-level role. Required when `create_service_account` is `true` unless `account_access` is set instead — exactly one of the two access models is needed, and setting both is rejected at plan. `permission` is `admin`, `write` or `read`, matched case-insensitively, and can be changed later; `namespace_id` cannot, so changing it replaces the service account and every API key issued for it | <pre>object({<br/>    namespace_id = string<br/>    permission   = string<br/>  })</pre> | `null` | no |
 | <a name="input_timeouts"></a> [timeouts](#input\_timeouts) | Create and delete timeouts for the service account, as duration strings such as `30s` or `2h45m`. Optional; the provider's own defaults apply to whichever is unset | <pre>object({<br/>    create = optional(string)<br/>    delete = optional(string)<br/>  })</pre> | `{}` | no |

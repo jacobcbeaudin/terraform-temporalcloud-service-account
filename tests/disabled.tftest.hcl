@@ -11,6 +11,10 @@ run "creates_nothing" {
   variables {
     create_service_account = false
 
+    // name has no default, so Terraform requires it even when nothing is
+    // created. This empty value is never read.
+    name = ""
+
     // Set, and must still produce nothing: an API key has no owner without the
     // service account, so create_apikey is subordinate to it.
     create_apikey       = true
