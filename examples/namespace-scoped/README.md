@@ -52,7 +52,7 @@ The API key token is not output here — it is a credential. To read it, add an 
 
 | Name | Source | Version |
 | ---- | ------ | ------- |
-| <a name="module_service_account"></a> [service\_account](#module\_service\_account) | terraform-temporalcloud-modules/service-account/temporalcloud | ~> 1.0 |
+| <a name="module_service_account"></a> [service\_account](#module\_service\_account) | terraform-temporalcloud-modules/service-account/temporalcloud | ~> 2.0 |
 
 ## Resources
 

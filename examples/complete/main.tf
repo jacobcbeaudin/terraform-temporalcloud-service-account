@@ -36,7 +36,7 @@ resource "temporalcloud_namespace" "orders" {
 
 module "service_account" {
   source  = "terraform-temporalcloud-modules/service-account/temporalcloud"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
   name        = local.name
   description = "Example service account managed by Terraform"

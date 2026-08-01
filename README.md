@@ -45,7 +45,7 @@ neither is rejected at apply with `Either account_access or namespace_scoped_acc
 ```hcl
 module "service_account" {
   source  = "terraform-temporalcloud-modules/service-account/temporalcloud"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
   name        = "ci-deployer"
   description = "Runs schedule and worker deployments from CI"
@@ -72,7 +72,7 @@ The tighter model: the identity exists only inside one namespace and holds no ac
 ```hcl
 module "worker_identity" {
   source  = "terraform-temporalcloud-modules/service-account/temporalcloud"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
   name = "payments-workers"
 
@@ -145,7 +145,7 @@ Terragrunt or anywhere a `for_each` on the module block is awkward:
 ```hcl
 module "service_accounts" {
   source  = "terraform-temporalcloud-modules/service-account/temporalcloud//wrappers"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
   defaults = {
     account_access = "read"

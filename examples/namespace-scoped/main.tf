@@ -43,7 +43,7 @@ resource "temporalcloud_namespace" "payments" {
 
 module "service_account" {
   source  = "terraform-temporalcloud-modules/service-account/temporalcloud"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
   name        = local.name
   description = "Worker fleet for the payments namespace"
