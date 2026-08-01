@@ -76,10 +76,14 @@ which the provider's own errors cannot do.
 The relationships between the two access models are **not** re-implemented here, deliberately:
 
 - The provider carries `ConflictsWith` validators for `namespace_scoped_access` against
-  `account_access`, `account_access_custom_roles` and `namespace_accesses`. They fire during
-  `terraform validate`, before any module-level check could, with `Invalid Attribute Combination` and
-  the two attribute names. A module-level duplicate would be unreachable.
-- Requiring one of the two is enforced by the API at apply, with
+  `account_access`, `account_access_custom_roles` and `namespace_accesses`. They report
+  `Invalid Attribute Combination` naming the two attributes, which is a better error than a
+  module-level duplicate would produce. Note where they fire: a provider schema validator runs during
+  `terraform validate`, but only against values the config already knows, and anything arriving through
+  a module input is unknown at that point — `ConflictsWith` explicitly defers until every attribute it
+  compares is known. Through this module the check therefore lands at plan, which needs credentials.
+  The module's own `variable` validations have no such limitation.
+- Requiring one of the two is enforced by the provider at apply, in `buildServiceAccountSpec`, with
   `Either account_access or namespace_scoped_access must be provided`.
 
 Cross-variable checks would in any case need `precondition` blocks rather than `validation` blocks:
@@ -111,7 +115,8 @@ exists.
 
 Two more are caught earlier than that, by provider-side validators, and so need no apply run:
 `account_access` of `owner` or `admin` alongside explicit `namespace_accesses`, and the two access
-models set together. Both fail during `terraform validate`.
+models set together. Both fail during `terraform plan` — not `terraform validate`, for the reason
+above — so credentials are still required to reach them.
 
 When writing assertions, note that outputs wrapped in `try(x, [])` evaluate to a *tuple*, so
 `output.service_account_namespace_accesses == tolist([])` is false even against an empty result.

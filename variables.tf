@@ -9,13 +9,13 @@ variable "create_service_account" {
 ################################################################################
 
 variable "name" {
-  description = "The name of the service account. Required unless `create_service_account` is `false`"
+  description = "The name of the service account. Required when `create_service_account` is `true`; the empty default is sent as an empty name and nothing rejects it before apply"
   type        = string
   default     = ""
 }
 
 variable "description" {
-  description = "Description of the service account. Shown alongside it in the Temporal Cloud UI"
+  description = "Description of the service account, shown alongside it in the Temporal Cloud UI. Optional; the service account is created without one when unset"
   type        = string
   default     = null
 }
@@ -29,7 +29,7 @@ variable "description" {
 ################################################################################
 
 variable "account_access" {
-  description = "The role this service account holds on the account: `owner`, `admin`, `developer`, `read`, `financeadmin` or `metricsread`, matched case-insensitively. Set this or `namespace_scoped_access`, never both"
+  description = "The role this service account holds on the account: `owner`, `admin`, `developer`, `read`, `financeadmin` or `metricsread`, matched case-insensitively. Required when `create_service_account` is `true` unless `namespace_scoped_access` is set instead — exactly one of the two access models is needed, and setting both is rejected at plan"
   type        = string
   default     = null
 
@@ -42,7 +42,7 @@ variable "account_access" {
 }
 
 variable "account_access_custom_roles" {
-  description = "IDs of custom roles granted in addition to the built-in `account_access` role. Omit rather than passing an empty set. Cannot be combined with `namespace_scoped_access`"
+  description = "IDs of custom roles granted in addition to the built-in `account_access` role. Optional; the service account holds only its `account_access` role when unset. These roles add to `account_access` rather than replacing it, so they do not satisfy the requirement for an access model on their own. Omit rather than passing an empty set. Cannot be combined with `namespace_scoped_access`"
   type        = set(string)
   default     = null
 
@@ -53,7 +53,7 @@ variable "account_access_custom_roles" {
 }
 
 variable "namespace_accesses" {
-  description = "Per-namespace permissions, as a set of `namespace_id` and `permission` pairs. `permission` is `admin`, `write` or `read`, matched case-insensitively. A service account whose `account_access` is `owner` or `admin` already reaches every namespace and cannot be given explicit entries here. Omit rather than passing an empty set. Cannot be combined with `namespace_scoped_access`"
+  description = "Per-namespace permissions, as a set of `namespace_id` and `permission` pairs. `permission` is `admin`, `write` or `read`, matched case-insensitively. Optional; the service account reaches namespaces only through its `account_access` role when unset. A service account whose `account_access` is `owner` or `admin` already reaches every namespace and cannot be given explicit entries here. Omit rather than passing an empty set. Cannot be combined with `namespace_scoped_access`"
   type = set(object({
     namespace_id = string
     permission   = string
@@ -82,7 +82,7 @@ variable "namespace_accesses" {
 ################################################################################
 
 variable "namespace_scoped_access" {
-  description = "Confines the service account to exactly one namespace, with no account-level role. `permission` is `admin`, `write` or `read`, matched case-insensitively, and can be changed later; `namespace_id` cannot, so changing it replaces the service account and every API key issued for it. Set this or `account_access`, never both"
+  description = "Confines the service account to exactly one namespace, with no account-level role. Required when `create_service_account` is `true` unless `account_access` is set instead — exactly one of the two access models is needed, and setting both is rejected at plan. `permission` is `admin`, `write` or `read`, matched case-insensitively, and can be changed later; `namespace_id` cannot, so changing it replaces the service account and every API key issued for it"
   type = object({
     namespace_id = string
     permission   = string
@@ -96,7 +96,7 @@ variable "namespace_scoped_access" {
 }
 
 variable "timeouts" {
-  description = "Create and delete timeouts for the service account, as duration strings such as `30s` or `2h45m`"
+  description = "Create and delete timeouts for the service account, as duration strings such as `30s` or `2h45m`. Optional; the provider's own defaults apply to whichever is unset"
   type = object({
     create = optional(string)
     delete = optional(string)
@@ -112,25 +112,25 @@ variable "timeouts" {
 ################################################################################
 
 variable "create_apikey" {
-  description = "Controls if an API key should be issued for the service account. Has no effect when `create_service_account` is `false`, since the key needs an owner"
+  description = "Controls if an API key should be issued for the service account. Setting it to `true` makes `apikey_display_name` and `apikey_expiry_time` required. Has no effect when `create_service_account` is `false`, since the key needs an owner"
   type        = bool
   default     = false
 }
 
 variable "apikey_display_name" {
-  description = "Display name of the API key, shown in the Temporal Cloud UI. Required when `create_apikey` is `true`"
+  description = "Display name of the API key, shown in the Temporal Cloud UI. Required when `create_apikey` is `true`; the empty default is sent as an empty display name and nothing rejects it before apply"
   type        = string
   default     = ""
 }
 
 variable "apikey_description" {
-  description = "Description of the API key"
+  description = "Description of the API key. Optional; the key is created without one when unset"
   type        = string
   default     = null
 }
 
 variable "apikey_expiry_time" {
-  description = "When the API key expires, as an RFC 3339 timestamp such as `2027-01-01T00:00:00Z`. Required when `create_apikey` is `true`. Use a fixed timestamp: an expression derived from `timestamp()` changes on every plan and replaces the key, invalidating credentials already in use"
+  description = "When the API key expires, as an RFC 3339 timestamp such as `2027-01-01T00:00:00Z`. Required when `create_apikey` is `true`; there is no default expiry, and the empty default fails the apply with `Invalid ExpiryTime`. Use a fixed timestamp: an expression derived from `timestamp()` changes on every plan and replaces the key, invalidating credentials already in use"
   type        = string
   default     = ""
 
@@ -144,13 +144,13 @@ variable "apikey_expiry_time" {
 }
 
 variable "apikey_disabled" {
-  description = "Disables the API key without deleting it. A disabled key is rejected at authentication but keeps its identity, so it can be re-enabled"
+  description = "Disables the API key without deleting it. Optional; the key is created enabled when unset. A disabled key is rejected at authentication but keeps its identity, so it can be re-enabled"
   type        = bool
   default     = null
 }
 
 variable "apikey_timeouts" {
-  description = "Create and delete timeouts for the API key, as duration strings such as `30s` or `2h45m`"
+  description = "Create and delete timeouts for the API key, as duration strings such as `30s` or `2h45m`. Optional; the provider's own defaults apply to whichever is unset"
   type = object({
     create = optional(string)
     delete = optional(string)
