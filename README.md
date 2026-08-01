@@ -1,0 +1,232 @@
+# Temporal Cloud Service Account Terraform module
+
+[![CI](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/actions/workflows/pre-commit.yml/badge.svg?branch=main)](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/actions/workflows/pre-commit.yml?query=branch%3Amain)
+[![Apply Tests](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/actions/workflows/test.yml?query=branch%3Amain)
+
+Terraform module which creates a [Temporal Cloud](https://temporal.io/cloud) service account, together
+with the API key that gives it usable credentials.
+
+A service account is the machine identity workers and CI systems authenticate as. An API key is issued
+*for* a service account and is the only way to obtain credentials for one, which is why both live in
+this module.
+
+Both badges report the state of `main`. **CI** covers formatting, linting, documentation and
+`terraform validate`, and runs on every pull request and again after merge. **Apply Tests** creates and
+destroys real service accounts and API keys against a live Temporal Cloud account, weekly and on
+demand — the only check that proves the API accepts what this module sends.
+
+## Requirements
+
+The `temporalcloud` provider authenticates with an API key, read from the `TEMPORAL_CLOUD_API_KEY`
+environment variable:
+
+```bash
+export TEMPORAL_CLOUD_API_KEY="<your-api-key>"
+```
+
+The provider authenticates when it initialises, so a key is needed even for a `terraform plan` that
+would create nothing. Keep the key out of version control — an untracked `.env` file rather than a
+committed `.tfvars`.
+
+## Choosing an access model
+
+A service account uses **one of two mutually exclusive** access models. Pick before you write the
+configuration: they cannot be combined, and switching between them later replaces the service account.
+
+| | Account-wide | Namespace-scoped |
+| --- | --- | --- |
+| Inputs | `account_access`, `account_access_custom_roles`, `namespace_accesses` | `namespace_scoped_access` |
+| Reaches | the whole account, at the `account_access` role, plus any extra per-namespace grants | exactly one namespace, nothing else |
+| Change the namespace later | yes, `namespace_accesses` is mutable | no, `namespace_id` is immutable |
+| Use for | platform automation, CI, anything spanning namespaces | a worker fleet serving a single namespace |
+
+Setting inputs from both raises `Invalid Attribute Combination` during `terraform validate`. Setting
+neither is rejected at apply with `Either account_access or namespace_scoped_access must be provided`.
+
+## Usage
+
+### Account-wide service account with an API key
+
+```hcl
+module "service_account" {
+  source  = "terraform-temporalcloud-modules/service-account/temporalcloud"
+  version = "~> 1.0"
+
+  name        = "ci-deployer"
+  description = "Runs schedule and worker deployments from CI"
+
+  account_access = "developer"
+
+  namespace_accesses = [
+    {
+      namespace_id = module.orders_namespace.namespace_id
+      permission   = "write"
+    },
+  ]
+
+  create_apikey       = true
+  apikey_display_name = "ci-deployer"
+  apikey_expiry_time  = "2027-01-01T00:00:00Z"
+}
+```
+
+### Namespace-scoped service account
+
+The tighter model: the identity exists only inside one namespace and holds no account-level role.
+
+```hcl
+module "worker_identity" {
+  source  = "terraform-temporalcloud-modules/service-account/temporalcloud"
+  version = "~> 1.0"
+
+  name = "payments-workers"
+
+  namespace_scoped_access = {
+    namespace_id = module.payments_namespace.namespace_id
+    permission   = "write"
+  }
+
+  create_apikey       = true
+  apikey_display_name = "payments-workers"
+  apikey_expiry_time  = "2027-01-01T00:00:00Z"
+}
+```
+
+### Reading the API key token
+
+The token is the credential a client authenticates with. It is returned only when the key is created,
+so the module exposes it as a sensitive output rather than printing it:
+
+```hcl
+output "worker_apikey_token" {
+  value     = module.worker_identity.apikey_token
+  sensitive = true
+}
+```
+
+```bash
+terraform output -raw worker_apikey_token
+```
+
+Feed it to a worker through the `TEMPORAL_API_KEY` environment variable, or write it into a secret
+store. Do not commit it, and treat the Terraform state as a secret — the token is stored there in
+plain text.
+
+## Notes
+
+Provider and Temporal Cloud behaviours worth knowing before you plan:
+
+- **Never derive `apikey_expiry_time` from `timestamp()`.** An expression such as
+  `timeadd(timestamp(), "8760h")` produces a different value on every plan, so Terraform replaces the
+  API key on every apply and silently invalidates the credential your workers are using. Use a fixed
+  RFC 3339 timestamp and change it deliberately when you rotate.
+- **An `admin` service account cannot be given explicit `namespace_accesses`.** Admins implicitly
+  reach every namespace, and combining the two is rejected. Use `developer`, `read` or `metricsread`
+  when you want per-namespace grants.
+- **`namespace_scoped_access.namespace_id` is immutable.** Changing it replaces the service account,
+  which also destroys every API key issued for it. Plan output will show the replacement — read it
+  before applying.
+- **Empty sets are rejected.** Omit `namespace_accesses` and `account_access_custom_roles` rather than
+  passing `[]`.
+- **Rotating a key means replacing it.** There is no in-place rotation. Issue the replacement, move
+  clients over, then remove the old one — a second module instance, or a second `temporalcloud_apikey`
+  resource, is the usual way to overlap the two.
+- **`apikey_disabled = true` blocks authentication without deleting the key.** The key keeps its
+  identity and can be re-enabled, which makes it the safe way to test a revocation.
+
+## Examples
+
+- [complete](examples/complete) — an account-wide service account with a per-namespace grant and an
+  API key
+- [namespace-scoped](examples/namespace-scoped) — a service account confined to a single namespace,
+  for a worker fleet
+
+## Managing several service accounts
+
+The [`wrappers`](wrappers) submodule creates many service accounts from one call, for use with
+Terragrunt or anywhere a `for_each` on the module block is awkward:
+
+```hcl
+module "service_accounts" {
+  source  = "terraform-temporalcloud-modules/service-account/temporalcloud//wrappers"
+  version = "~> 1.0"
+
+  defaults = {
+    account_access = "read"
+  }
+
+  items = {
+    reporting = { name = "reporting" }
+    ci        = { name = "ci", account_access = "developer" }
+  }
+}
+```
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5.7 |
+| <a name="requirement_temporalcloud"></a> [temporalcloud](#requirement\_temporalcloud) | >= 1.6.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| <a name="provider_temporalcloud"></a> [temporalcloud](#provider\_temporalcloud) | >= 1.6.0 |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+| ---- | ---- |
+| [temporalcloud_apikey.this](https://registry.terraform.io/providers/temporalio/temporalcloud/latest/docs/resources/apikey) | resource |
+| [temporalcloud_service_account.this](https://registry.terraform.io/providers/temporalio/temporalcloud/latest/docs/resources/service_account) | resource |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_account_access"></a> [account\_access](#input\_account\_access) | The role this service account holds on the account: `admin`, `developer`, `read` or `metricsread`, matched case-insensitively. Set this or `namespace_scoped_access`, never both | `string` | `null` | no |
+| <a name="input_account_access_custom_roles"></a> [account\_access\_custom\_roles](#input\_account\_access\_custom\_roles) | IDs of custom roles granted in addition to the built-in `account_access` role. Omit rather than passing an empty set. Cannot be combined with `namespace_scoped_access` | `set(string)` | `null` | no |
+| <a name="input_apikey_description"></a> [apikey\_description](#input\_apikey\_description) | Description of the API key | `string` | `null` | no |
+| <a name="input_apikey_disabled"></a> [apikey\_disabled](#input\_apikey\_disabled) | Disables the API key without deleting it. A disabled key is rejected at authentication but keeps its identity, so it can be re-enabled | `bool` | `null` | no |
+| <a name="input_apikey_display_name"></a> [apikey\_display\_name](#input\_apikey\_display\_name) | Display name of the API key, shown in the Temporal Cloud UI. Required when `create_apikey` is `true` | `string` | `""` | no |
+| <a name="input_apikey_expiry_time"></a> [apikey\_expiry\_time](#input\_apikey\_expiry\_time) | When the API key expires, as an RFC 3339 timestamp such as `2027-01-01T00:00:00Z`. Required when `create_apikey` is `true`. Use a fixed timestamp: an expression derived from `timestamp()` changes on every plan and replaces the key, invalidating credentials already in use | `string` | `""` | no |
+| <a name="input_apikey_timeouts"></a> [apikey\_timeouts](#input\_apikey\_timeouts) | Create and delete timeouts for the API key, as duration strings such as `30s` or `2h45m` | <pre>object({<br/>    create = optional(string)<br/>    delete = optional(string)<br/>  })</pre> | `{}` | no |
+| <a name="input_create_apikey"></a> [create\_apikey](#input\_create\_apikey) | Controls if an API key should be issued for the service account. Has no effect when `create_service_account` is `false`, since the key needs an owner | `bool` | `false` | no |
+| <a name="input_create_service_account"></a> [create\_service\_account](#input\_create\_service\_account) | Controls if the service account should be created. Set to `false` to disable the module without removing the call | `bool` | `true` | no |
+| <a name="input_description"></a> [description](#input\_description) | Description of the service account. Shown alongside it in the Temporal Cloud UI | `string` | `null` | no |
+| <a name="input_name"></a> [name](#input\_name) | The name of the service account. Required unless `create_service_account` is `false` | `string` | `""` | no |
+| <a name="input_namespace_accesses"></a> [namespace\_accesses](#input\_namespace\_accesses) | Per-namespace permissions, as a set of `namespace_id` and `permission` pairs. `permission` is `admin`, `write` or `read`, matched case-insensitively. A service account whose `account_access` is `admin` already reaches every namespace and cannot be given explicit entries here. Omit rather than passing an empty set. Cannot be combined with `namespace_scoped_access` | <pre>set(object({<br/>    namespace_id = string<br/>    permission   = string<br/>  }))</pre> | `null` | no |
+| <a name="input_namespace_scoped_access"></a> [namespace\_scoped\_access](#input\_namespace\_scoped\_access) | Confines the service account to exactly one namespace, with no account-level role. `permission` is `admin`, `write` or `read`, matched case-insensitively, and can be changed later; `namespace_id` cannot, so changing it replaces the service account and every API key issued for it. Set this or `account_access`, never both | <pre>object({<br/>    namespace_id = string<br/>    permission   = string<br/>  })</pre> | `null` | no |
+| <a name="input_timeouts"></a> [timeouts](#input\_timeouts) | Create and delete timeouts for the service account, as duration strings such as `30s` or `2h45m` | <pre>object({<br/>    create = optional(string)<br/>    delete = optional(string)<br/>  })</pre> | `{}` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| <a name="output_apikey_display_name"></a> [apikey\_display\_name](#output\_apikey\_display\_name) | The display name of the API key |
+| <a name="output_apikey_id"></a> [apikey\_id](#output\_apikey\_id) | The unique identifier of the API key. Empty when no key was created |
+| <a name="output_apikey_state"></a> [apikey\_state](#output\_apikey\_state) | The current state of the API key as reported by Temporal Cloud |
+| <a name="output_apikey_token"></a> [apikey\_token](#output\_apikey\_token) | The API key token, the credential a client authenticates with. Returned only when the key is created and stored in Terraform state, so treat the state as a secret. Read it with `terraform output -raw apikey_token` |
+| <a name="output_service_account_account_access"></a> [service\_account\_account\_access](#output\_service\_account\_account\_access) | The account-level role held by the service account. Empty for a namespace-scoped service account |
+| <a name="output_service_account_id"></a> [service\_account\_id](#output\_service\_account\_id) | The unique identifier of the service account. This is the value to pass as `owner_id` when issuing API keys for it elsewhere |
+| <a name="output_service_account_name"></a> [service\_account\_name](#output\_service\_account\_name) | The name of the service account |
+| <a name="output_service_account_namespace_accesses"></a> [service\_account\_namespace\_accesses](#output\_service\_account\_namespace\_accesses) | The set of per-namespace permissions granted to the service account |
+| <a name="output_service_account_namespace_scoped_access"></a> [service\_account\_namespace\_scoped\_access](#output\_service\_account\_namespace\_scoped\_access) | The single namespace the service account is confined to, and its permission there. Empty unless `namespace_scoped_access` was set |
+| <a name="output_service_account_state"></a> [service\_account\_state](#output\_service\_account\_state) | The current state of the service account as reported by Temporal Cloud |
+<!-- END_TF_DOCS -->
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, how the test layers are arranged,
+and the Temporal Cloud API behaviours the tests exist to guard against.
+
+## License
+
+Apache-2.0 licensed. See [LICENSE](LICENSE).
