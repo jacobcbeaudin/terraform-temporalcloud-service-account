@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/compare/v1.0.1...v1.0.2) (2026-08-01)
+
+### Bug Fixes
+
+* Accept the owner and financeadmin account roles ([792bc38](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/commit/792bc38157360d69edbf54f1c39f3463bec8c981))
+
 ## [1.0.1](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/compare/v1.0.0...v1.0.1) (2026-08-01)
 
 ### Bug Fixes
