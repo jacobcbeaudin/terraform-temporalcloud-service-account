@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.4](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/compare/v1.0.3...v1.0.4) (2026-08-01)
+
+### Documentation
+
+* Drop the badge explanation from the README ([5a0caa9](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/commit/5a0caa90e791354bd5644f0af5c4ea573aeb30c1))
+
 ## [1.0.3](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/compare/v1.0.2...v1.0.3) (2026-08-01)
 
 ## [1.0.2](https://github.com/terraform-temporalcloud-modules/terraform-temporalcloud-service-account/compare/v1.0.1...v1.0.2) (2026-08-01)
