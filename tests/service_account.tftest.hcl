@@ -104,9 +104,11 @@ run "add_namespace_access_and_apikey" {
     apikey_disabled    = false
   }
 
-  // Updating must not have replaced the service account.
+  // Updating must not have replaced the service account. The ID is what proves
+  // that: the name is the same in both runs by construction, so comparing it
+  // would pass either way.
   assert {
-    condition     = output.service_account_name == run.setup.service_account_name
+    condition     = output.service_account_id == run.create_service_account.service_account_id
     error_message = "service account was replaced rather than updated in place"
   }
 
@@ -191,12 +193,12 @@ run "reduce_access" {
   }
 
   assert {
-    condition     = output.service_account_name == run.setup.service_account_name
+    condition     = output.service_account_id == run.create_service_account.service_account_id
     error_message = "service account was replaced rather than updated in place"
   }
 
   assert {
-    condition     = output.apikey_id != ""
-    error_message = "disabling the API key removed it instead of disabling it"
+    condition     = output.apikey_id == run.add_namespace_access_and_apikey.apikey_id
+    error_message = "disabling the API key replaced it instead of disabling it"
   }
 }

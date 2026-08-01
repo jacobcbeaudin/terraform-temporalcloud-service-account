@@ -45,9 +45,13 @@ run "create_many" {
     }
   }
 
+  // nonsensitive() around the interpolation: the wrapper output is sensitive, so
+  // without it Terraform suppresses the whole message and prints
+  // "Error message refers to sensitive values" instead. The item count is not
+  // itself a secret.
   assert {
     condition     = length(output.wrapper) == 2
-    error_message = "expected 2 service accounts from the wrapper, got ${length(output.wrapper)}"
+    error_message = "expected 2 service accounts from the wrapper, got ${nonsensitive(length(output.wrapper))}"
   }
 
   assert {

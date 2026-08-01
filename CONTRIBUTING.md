@@ -94,26 +94,33 @@ four cases: variable null, attribute omitted, attribute valid, attribute invalid
 
 ## API behaviours the tests guard against
 
-Each of these passes `terraform validate` and fails only on apply, or fails silently. They are the
-reason the apply layer exists.
+Each of these either fails only on apply, or fails silently. They are the reason the apply layer
+exists.
 
-1. **`account_access = "admin"` refuses explicit `namespace_accesses`.** Admins implicitly reach every
-   namespace. The apply tests use `developer` so the grants are accepted.
-2. **`namespace_scoped_access.namespace_id` is immutable.** `namespace_scoped.tftest.hcl` changes only
-   the permission between run blocks and asserts the service account was updated, not replaced.
-3. **`create_apikey` is subordinate to `create_service_account`.** A key needs an owner.
+1. **`namespace_scoped_access.namespace_id` is immutable.** `namespace_scoped.tftest.hcl` changes only
+   the permission between run blocks and asserts that `service_account_id` is unchanged, which is what
+   distinguishes an in-place update from a replacement — the name cannot, since both runs request the
+   same one.
+2. **`create_apikey` is subordinate to `create_service_account`.** A key needs an owner.
    `disabled.tftest.hcl` sets `create_apikey = true` with the service account off and asserts nothing
    is created.
-4. **An expiry derived from `timestamp()` replaces the key on every apply.** Nothing errors; the
-   credential in use is simply invalidated. The tests and examples use fixed timestamps, and the
-   variable description says why.
+3. **An expiry derived from `timestamp()` replaces the key on every apply.** `expiry_time` carries
+   `RequiresReplace` in the provider, and `timestamp()` produces a new value on every plan. Nothing
+   errors; the credential in use is simply invalidated. The tests and examples use fixed timestamps,
+   and the variable description says why.
+
+Two more are caught earlier than that, by provider-side validators, and so need no apply run:
+`account_access` of `owner` or `admin` alongside explicit `namespace_accesses`, and the two access
+models set together. Both fail during `terraform validate`.
 
 When writing assertions, note that outputs wrapped in `try(x, [])` evaluate to a *tuple*, so
 `output.service_account_namespace_accesses == tolist([])` is false even against an empty result.
 Compare with `length()` and index elementwise instead.
 
-`apikey_token` is a sensitive output. Comparing it in an `assert` condition works — the sensitivity
-does not propagate into the static `error_message` — so there is no need for `nonsensitive()`.
+`apikey_token` is a sensitive output, and so is the wrapper's `wrapper` output. Comparing either in an
+`assert` condition works and needs no `nonsensitive()`. Interpolating one into `error_message` does
+not: Terraform suppresses the rendered message with `Error message refers to sensitive values`, so
+wrap the interpolated part in `nonsensitive()` or keep the message static.
 
 ## Running the apply tests
 

@@ -120,9 +120,10 @@ Provider and Temporal Cloud behaviours worth knowing before you plan:
   `timeadd(timestamp(), "8760h")` produces a different value on every plan, so Terraform replaces the
   API key on every apply and silently invalidates the credential your workers are using. Use a fixed
   RFC 3339 timestamp and change it deliberately when you rotate.
-- **An `admin` service account cannot be given explicit `namespace_accesses`.** Admins implicitly
-  reach every namespace, and combining the two is rejected. Use `developer`, `read` or `metricsread`
-  when you want per-namespace grants.
+- **An `owner` or `admin` service account cannot be given explicit `namespace_accesses`.** Those roles
+  implicitly reach every namespace, and combining the two is rejected during `terraform validate` with
+  `Users with account_access roles of owner or admin cannot have namespace accesses`. Use `developer`,
+  `read`, `financeadmin` or `metricsread` when you want per-namespace grants.
 - **`namespace_scoped_access.namespace_id` is immutable.** Changing it replaces the service account,
   which also destroys every API key issued for it. Plan output will show the replacement — read it
   before applying.
@@ -191,7 +192,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_account_access"></a> [account\_access](#input\_account\_access) | The role this service account holds on the account: `admin`, `developer`, `read` or `metricsread`, matched case-insensitively. Set this or `namespace_scoped_access`, never both | `string` | `null` | no |
+| <a name="input_account_access"></a> [account\_access](#input\_account\_access) | The role this service account holds on the account: `owner`, `admin`, `developer`, `read`, `financeadmin` or `metricsread`, matched case-insensitively. Set this or `namespace_scoped_access`, never both | `string` | `null` | no |
 | <a name="input_account_access_custom_roles"></a> [account\_access\_custom\_roles](#input\_account\_access\_custom\_roles) | IDs of custom roles granted in addition to the built-in `account_access` role. Omit rather than passing an empty set. Cannot be combined with `namespace_scoped_access` | `set(string)` | `null` | no |
 | <a name="input_apikey_description"></a> [apikey\_description](#input\_apikey\_description) | Description of the API key | `string` | `null` | no |
 | <a name="input_apikey_disabled"></a> [apikey\_disabled](#input\_apikey\_disabled) | Disables the API key without deleting it. A disabled key is rejected at authentication but keeps its identity, so it can be re-enabled | `bool` | `null` | no |
@@ -202,7 +203,7 @@ No modules.
 | <a name="input_create_service_account"></a> [create\_service\_account](#input\_create\_service\_account) | Controls if the service account should be created. Set to `false` to disable the module without removing the call | `bool` | `true` | no |
 | <a name="input_description"></a> [description](#input\_description) | Description of the service account. Shown alongside it in the Temporal Cloud UI | `string` | `null` | no |
 | <a name="input_name"></a> [name](#input\_name) | The name of the service account. Required unless `create_service_account` is `false` | `string` | `""` | no |
-| <a name="input_namespace_accesses"></a> [namespace\_accesses](#input\_namespace\_accesses) | Per-namespace permissions, as a set of `namespace_id` and `permission` pairs. `permission` is `admin`, `write` or `read`, matched case-insensitively. A service account whose `account_access` is `admin` already reaches every namespace and cannot be given explicit entries here. Omit rather than passing an empty set. Cannot be combined with `namespace_scoped_access` | <pre>set(object({<br/>    namespace_id = string<br/>    permission   = string<br/>  }))</pre> | `null` | no |
+| <a name="input_namespace_accesses"></a> [namespace\_accesses](#input\_namespace\_accesses) | Per-namespace permissions, as a set of `namespace_id` and `permission` pairs. `permission` is `admin`, `write` or `read`, matched case-insensitively. A service account whose `account_access` is `owner` or `admin` already reaches every namespace and cannot be given explicit entries here. Omit rather than passing an empty set. Cannot be combined with `namespace_scoped_access` | <pre>set(object({<br/>    namespace_id = string<br/>    permission   = string<br/>  }))</pre> | `null` | no |
 | <a name="input_namespace_scoped_access"></a> [namespace\_scoped\_access](#input\_namespace\_scoped\_access) | Confines the service account to exactly one namespace, with no account-level role. `permission` is `admin`, `write` or `read`, matched case-insensitively, and can be changed later; `namespace_id` cannot, so changing it replaces the service account and every API key issued for it. Set this or `account_access`, never both | <pre>object({<br/>    namespace_id = string<br/>    permission   = string<br/>  })</pre> | `null` | no |
 | <a name="input_timeouts"></a> [timeouts](#input\_timeouts) | Create and delete timeouts for the service account, as duration strings such as `30s` or `2h45m` | <pre>object({<br/>    create = optional(string)<br/>    delete = optional(string)<br/>  })</pre> | `{}` | no |
 

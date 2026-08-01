@@ -41,8 +41,8 @@ module "service_account" {
   name        = local.name
   description = "Example service account managed by Terraform"
 
-  # `developer` rather than `admin`: an admin service account implicitly reaches
-  # every namespace, and the API then refuses the explicit grants below.
+  # `developer` rather than `owner` or `admin`: those roles implicitly reach every
+  # namespace, so the explicit grants below are rejected alongside them.
   account_access = "developer"
 
   namespace_accesses = [

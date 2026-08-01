@@ -85,8 +85,10 @@ run "narrow_permission" {
     error_message = "the namespace-scoped permission was not narrowed to read"
   }
 
+  // The ID, not the name: both runs request the same name, so only the ID can
+  // tell an in-place update from a replacement.
   assert {
-    condition     = output.service_account_name == "${run.setup.service_account_name}-scoped"
+    condition     = output.service_account_id == run.create_namespace_scoped_service_account.service_account_id
     error_message = "service account was replaced rather than updated in place"
   }
 }

@@ -29,15 +29,15 @@ variable "description" {
 ################################################################################
 
 variable "account_access" {
-  description = "The role this service account holds on the account: `admin`, `developer`, `read` or `metricsread`, matched case-insensitively. Set this or `namespace_scoped_access`, never both"
+  description = "The role this service account holds on the account: `owner`, `admin`, `developer`, `read`, `financeadmin` or `metricsread`, matched case-insensitively. Set this or `namespace_scoped_access`, never both"
   type        = string
   default     = null
 
   # try() covers the null case: lower() raises on a null argument, so the whole
   # check is wrapped rather than guarded operand by operand.
   validation {
-    condition     = try(contains(["admin", "developer", "read", "metricsread"], lower(var.account_access)), true)
-    error_message = "Account access must be one of: admin, developer, read, metricsread (case-insensitive)."
+    condition     = try(contains(["owner", "admin", "developer", "read", "financeadmin", "metricsread"], lower(var.account_access)), true)
+    error_message = "Account access must be one of: owner, admin, developer, read, financeadmin, metricsread (case-insensitive)."
   }
 }
 
@@ -53,7 +53,7 @@ variable "account_access_custom_roles" {
 }
 
 variable "namespace_accesses" {
-  description = "Per-namespace permissions, as a set of `namespace_id` and `permission` pairs. `permission` is `admin`, `write` or `read`, matched case-insensitively. A service account whose `account_access` is `admin` already reaches every namespace and cannot be given explicit entries here. Omit rather than passing an empty set. Cannot be combined with `namespace_scoped_access`"
+  description = "Per-namespace permissions, as a set of `namespace_id` and `permission` pairs. `permission` is `admin`, `write` or `read`, matched case-insensitively. A service account whose `account_access` is `owner` or `admin` already reaches every namespace and cannot be given explicit entries here. Omit rather than passing an empty set. Cannot be combined with `namespace_scoped_access`"
   type = set(object({
     namespace_id = string
     permission   = string
@@ -134,8 +134,9 @@ variable "apikey_expiry_time" {
   type        = string
   default     = ""
 
-  # formatdate() parses RFC 3339 and nothing else, so it doubles as the format
-  # check the provider performs server-side.
+  # formatdate() parses RFC 3339 and nothing else, so it accepts exactly the
+  # strings the provider parses at apply time and rejects the rest here, naming
+  # the variable.
   validation {
     condition     = var.apikey_expiry_time == "" || can(formatdate("YYYY-MM-DD", var.apikey_expiry_time))
     error_message = "The API key expiry time must be an RFC 3339 timestamp, for example 2027-01-01T00:00:00Z."
