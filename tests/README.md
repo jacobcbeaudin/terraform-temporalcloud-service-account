@@ -35,11 +35,45 @@ creating one here would couple this suite to that resource's own constraints. To
 run it by hand, create a custom role in the account, then add its ID to the
 `create_service_account` run block in `service_account.tftest.hcl`.
 
+`apikey_timeouts` is also covered only by `local/`, so it is type-checked but never
+sent to the API. The parent `timeouts` input is apply-covered, and both are passed
+straight through to a provider `timeouts` block.
+
 Files run sequentially and each is torn down before the next begins, so only
 `wrappers.tftest.hcl` has more than one service account alive at a time.
 
 [CONTRIBUTING.md](../CONTRIBUTING.md) explains why the layers are split this way
 and which API behaviours they guard against.
+
+## What the apply tests cannot assert
+
+`apikey_disabled` is applied by the `reduce_access` run block, but its effect is
+not observable: Temporal Cloud still reports `state = "active"` for a key that was
+applied with `disabled = true`. The only assertable consequence is that disabling a
+key keeps its identity, so the test compares the key ID against the prior run
+block's. Do not add an assertion claiming `apikey_state` reflects the flag — it
+does not.
+
+Assertions that claim a resource was **updated rather than replaced** compare the
+ID against the prior run block's, never against a name the same block passed in as
+a variable, which would hold either way. Both `service_account` and `apikey` IDs
+are opaque and server-issued, so those comparisons are real evidence.
+
+## Account access the apply tests require
+
+Only `TEMPORAL_CLOUD_API_KEY` — no AWS, GCP, mail domain or other external
+credential. The key does, however, need **more privilege than the other modules in
+this family**:
+
+| Requirement | Why | If absent |
+| --- | --- | --- |
+| An **account-admin scoped** key | The suite creates service accounts and issues API keys for them. A key scoped to `read` or `developer`, or to a single namespace, cannot do either | The apply fails with a permission error, not a validation error |
+| Headroom for 2 concurrent service accounts | `wrappers.tftest.hcl` | Service account quota error |
+| Namespace create/delete rights and one entitled region | `setup/` creates a namespace for `namespace_accesses` and `namespace_scoped_access` to point at | `check-api.sh` fails first when no region is entitled |
+
+The key issued *by* the suite is a real, usable credential returned in
+`apikey_token` and written to test state. Treat the state as a secret; it is
+discarded on teardown.
 
 ## Running the apply tests
 

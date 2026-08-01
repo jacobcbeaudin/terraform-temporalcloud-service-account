@@ -57,9 +57,12 @@ run "create_service_account" {
     error_message = "account_access did not round-trip through the API, got: ${output.service_account_account_access}"
   }
 
+  // The value, not merely non-empty: the API always populates state, so `!= ""`
+  // would pass on a service account stuck mid-provisioning. Creation is
+  // synchronous here, so `active` is the only acceptable result.
   assert {
-    condition     = output.service_account_state != ""
-    error_message = "service_account_state is empty"
+    condition     = lower(output.service_account_state) == "active"
+    error_message = "service account is not active, got: ${output.service_account_state}"
   }
 
   // Nothing requested yet.
@@ -139,9 +142,11 @@ run "add_namespace_access_and_apikey" {
     error_message = "apikey_display_name output did not echo the requested display name"
   }
 
+  // The value, not merely non-empty: the API always populates state, so `!= ""`
+  // would pass on a key that was issued but not usable.
   assert {
-    condition     = output.apikey_state != ""
-    error_message = "apikey_state is empty"
+    condition     = lower(output.apikey_state) == "active"
+    error_message = "API key is not active, got: ${output.apikey_state}"
   }
 
   // The reason the API key is folded into this module: it is the only way to get
@@ -201,4 +206,9 @@ run "reduce_access" {
     condition     = output.apikey_id == run.add_namespace_access_and_apikey.apikey_id
     error_message = "disabling the API key replaced it instead of disabling it"
   }
+
+  // Identity survival is all that can be asserted about apikey_disabled. The API
+  // still reports state = "active" for a disabled key, so `apikey_state` does not
+  // reflect the flag — do not add an assertion claiming it does. Recorded in
+  // tests/README.md.
 }
